@@ -28,13 +28,15 @@ pip install -r requirements.txt
 
 ### GUI Application
 
-LunaAI now includes a graphical user interface for easy interaction with datasets:
+LunaAI now includes a modern graphical user interface with Sun Valley theme (sv_ttk) for easy interaction with datasets:
 
 ```bash
 python luna_gui.py
 ```
 
 The GUI provides:
+- **Modern Theme**: Beautiful dark/light theme powered by sv_ttk
+- **Theme Toggle**: Switch between dark and light themes
 - **Dataset Selection**: Choose from all available HuggingFace datasets
 - **Load Datasets**: Load individual datasets or all at once
 - **Query Interface**: Search through loaded datasets
@@ -133,6 +135,7 @@ Main class for loading and managing datasets.
 - Python 3.7+
 - datasets>=2.14.0
 - huggingface_hub>=0.16.0
+- sv-ttk>=2.6.0 (for GUI)
 
 ## License
 

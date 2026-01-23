@@ -7,6 +7,7 @@ from tkinter import ttk, scrolledtext, messagebox
 import threading
 import logging
 from huggingface_datasets import HuggingFaceDatasetLoader
+import sv_ttk
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -20,6 +21,9 @@ class LunaAIGUI:
         self.root = root
         self.root.title("LunaAI - HuggingFace Dataset Explorer")
         self.root.geometry("900x700")
+        
+        # Apply sv_ttk theme
+        sv_ttk.set_theme("dark")
         
         # Initialize dataset loader
         self.loader = HuggingFaceDatasetLoader()
@@ -42,10 +46,20 @@ class LunaAIGUI:
         main_frame.columnconfigure(0, weight=1)
         main_frame.rowconfigure(3, weight=1)
         
-        # Title
-        title_label = ttk.Label(main_frame, text="LunaAI Dataset Explorer", 
+        # Title and theme toggle
+        title_frame = ttk.Frame(main_frame)
+        title_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        title_frame.columnconfigure(0, weight=1)
+        
+        title_label = ttk.Label(title_frame, text="LunaAI Dataset Explorer", 
                                font=('Arial', 16, 'bold'))
-        title_label.grid(row=0, column=0, pady=(0, 10), sticky=tk.W)
+        title_label.grid(row=0, column=0, sticky=tk.W)
+        
+        # Theme toggle button
+        self.theme_button = ttk.Button(title_frame, text="Toggle Theme",
+                                      command=self.toggle_theme)
+        self.theme_button.grid(row=0, column=1, sticky=tk.E)
+        self.current_theme = "dark"
         
         # Dataset selection frame
         dataset_frame = ttk.LabelFrame(main_frame, text="Dataset Selection", padding="10")
@@ -367,6 +381,15 @@ class LunaAIGUI:
             error_msg = f"Error searching {dataset_name}: {str(e)}"
             self.append_output(error_msg)
             logger.error(error_msg)
+    
+    def toggle_theme(self):
+        """Toggle between light and dark themes"""
+        if self.current_theme == "dark":
+            sv_ttk.set_theme("light")
+            self.current_theme = "light"
+        else:
+            sv_ttk.set_theme("dark")
+            self.current_theme = "dark"
 
 
 def main():
