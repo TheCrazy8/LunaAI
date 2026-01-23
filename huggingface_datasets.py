@@ -387,7 +387,9 @@ class HuggingFaceDatasetLoader:
         Get information about a specific dataset.
         
         Args:
-            dataset_key (str): Key of the dataset ('maptrace', 'diffusiondb', 'websight')
+            dataset_key (str): Key of the dataset (e.g., 'maptrace', 'diffusiondb', 'websight', 
+                              'community_dataset', 'finevision', 'cads', 'synth', 'wikipedia', 
+                              'deepmath', 'acemath', 'smoltalk')
             
         Returns:
             dict: Dataset information
