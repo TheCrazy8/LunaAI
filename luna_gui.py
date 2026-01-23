@@ -7,6 +7,10 @@ from tkinter import ttk, scrolledtext, messagebox
 import threading
 import logging
 
+# Configure logging first
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
 try:
     from huggingface_datasets import HuggingFaceDatasetLoader
 except ImportError as e:
@@ -22,7 +26,8 @@ except ImportError as e:
 try:
     import sv_ttk
 except ImportError as e:
-    raise ImportError("sv_ttk is required. Install it with: pip install sv-ttk") from e
+    logger.warning("sv_ttk not available. Install with: pip install sv-ttk")
+    sv_ttk = None
 
 try:
     from huggingface_hub import login, whoami
@@ -115,7 +120,7 @@ class LunaAIGUI:
         self.setup_train_tab(train_tab)
         
         # Status bar (bottom of main frame)
-        self.status_bar = ttk.Label(main_frame, text="Ready", relief=tk.SUNKEN,
+        self.status_bar = ttk.Label(parent, text="Ready", relief=tk.SUNKEN,
                                    anchor=tk.W)
         self.status_bar.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
     
@@ -150,7 +155,7 @@ class LunaAIGUI:
         self.current_theme = "dark"
         
         # Dataset selection frame
-        dataset_frame = ttk.LabelFrame(main_frame, text="Dataset Selection", padding="10")
+        dataset_frame = ttk.LabelFrame(parent, text="Dataset Selection", padding="10")
         dataset_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
         dataset_frame.columnconfigure(0, weight=1)
         
@@ -195,7 +200,7 @@ class LunaAIGUI:
         self.loaded_text.grid(row=5, column=0, sticky=(tk.W, tk.E))
         
         # Query frame
-        query_frame = ttk.LabelFrame(main_frame, text="Query Dataset", padding="10")
+        query_frame = ttk.LabelFrame(parent, text="Query Dataset", padding="10")
         query_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
         query_frame.columnconfigure(0, weight=1)
         
@@ -228,7 +233,7 @@ class LunaAIGUI:
         results_spinbox.grid(row=0, column=3)
         
         # Output frame
-        output_frame = ttk.LabelFrame(main_frame, text="Results", padding="10")
+        output_frame = ttk.LabelFrame(parent, text="Results", padding="10")
         output_frame.grid(row=3, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         output_frame.columnconfigure(0, weight=1)
         output_frame.rowconfigure(0, weight=1)
@@ -239,7 +244,7 @@ class LunaAIGUI:
         self.output_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         # Status bar
-        self.status_bar = ttk.Label(main_frame, text="Ready", relief=tk.SUNKEN,
+        self.status_bar = ttk.Label(parent, text="Ready", relief=tk.SUNKEN,
                                    anchor=tk.W)
         self.status_bar.grid(row=4, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
         
@@ -628,6 +633,164 @@ class LunaAIGUI:
             token_entry.bind('<Return>', lambda e: do_login())
             
             dialog.wait_window()
+    
+    def setup_chat_tab(self, parent):
+        """Setup the chat with Luna tab"""
+        parent.columnconfigure(0, weight=1)
+        parent.rowconfigure(1, weight=1)
+        
+        # Info label
+        info_label = ttk.Label(parent, text="Chat directly with Luna AI", 
+                              font=('Arial', 12, 'bold'))
+        info_label.grid(row=0, column=0, pady=(0, 10), sticky=tk.W)
+        
+        # Chat area
+        chat_frame = ttk.LabelFrame(parent, text="Conversation", padding="10")
+        chat_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        chat_frame.columnconfigure(0, weight=1)
+        chat_frame.rowconfigure(0, weight=1)
+        
+        self.chat_text = scrolledtext.ScrolledText(chat_frame, wrap=tk.WORD, height=20)
+        self.chat_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        self.chat_text.config(state='disabled')
+        
+        # Input area
+        input_frame = ttk.Frame(parent)
+        input_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
+        input_frame.columnconfigure(0, weight=1)
+        
+        self.chat_entry = ttk.Entry(input_frame)
+        self.chat_entry.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
+        self.chat_entry.bind('<Return>', lambda e: self.send_chat_message())
+        
+        self.send_button = ttk.Button(input_frame, text="Send", command=self.send_chat_message)
+        self.send_button.grid(row=0, column=1)
+        
+        # Welcome message
+        self.append_chat("Luna", "Hello! I'm Luna, your AI assistant. Ask me anything!")
+    
+    def setup_train_tab(self, parent):
+        """Setup the training tab"""
+        parent.columnconfigure(0, weight=1)
+        parent.rowconfigure(2, weight=1)
+        
+        # Info label
+        info_label = ttk.Label(parent, text="Train Luna on all datasets", 
+                              font=('Arial', 12, 'bold'))
+        info_label.grid(row=0, column=0, pady=(0, 10), sticky=tk.W)
+        
+        # Training controls
+        controls_frame = ttk.LabelFrame(parent, text="Training Settings", padding="10")
+        controls_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        
+        ttk.Label(controls_frame, text="Training mode: Simple (Knowledge Base)").grid(row=0, column=0, sticky=tk.W, pady=5)
+        ttk.Label(controls_frame, text="Samples per dataset:").grid(row=1, column=0, sticky=tk.W)
+        
+        self.samples_var = tk.StringVar(value="100")
+        samples_spin = ttk.Spinbox(controls_frame, from_=10, to=10000, textvariable=self.samples_var, width=10)
+        samples_spin.grid(row=1, column=1, sticky=tk.W, padx=5)
+        
+        self.train_button = ttk.Button(controls_frame, text="Start Training", command=self.start_training)
+        self.train_button.grid(row=2, column=0, columnspan=2, pady=10)
+        
+        # Training log
+        log_frame = ttk.LabelFrame(parent, text="Training Log", padding="10")
+        log_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        log_frame.columnconfigure(0, weight=1)
+        log_frame.rowconfigure(0, weight=1)
+        
+        self.training_log = scrolledtext.ScrolledText(log_frame, wrap=tk.WORD, height=15)
+        self.training_log.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        self.training_log.config(state='disabled')
+        
+        self.append_training_log("Ready to train Luna on all datasets")
+        self.append_training_log("Note: Training will use cached data if available")
+    
+    def append_chat(self, sender, message):
+        """Append message to chat"""
+        self.chat_text.config(state='normal')
+        self.chat_text.insert(tk.END, f"\n{sender}: {message}\n")
+        self.chat_text.see(tk.END)
+        self.chat_text.config(state='disabled')
+    
+    def send_chat_message(self):
+        """Send a chat message to Luna"""
+        message = self.chat_entry.get().strip()
+        if not message:
+            return
+        
+        self.chat_entry.delete(0, tk.END)
+        self.append_chat("You", message)
+        
+        # Generate Luna's response
+        def get_response():
+            try:
+                if self.luna and self.luna.is_loaded:
+                    # Use Luna to generate response
+                    # For now, simple echo with context
+                    response = f"I understand you're asking about: '{message}'. "
+                    if self.loaded_datasets:
+                        response += f"I have access to {len(self.loaded_datasets)} datasets. "
+                        response += "Try loading some datasets in the Dataset Explorer tab and then query them!"
+                    else:
+                        response += "Please load some datasets first in the Dataset Explorer tab."
+                else:
+                    response = "Luna AI is not fully initialized. Using simple mode."
+                
+                self.append_chat("Luna", response)
+            except Exception as e:
+                self.append_chat("Luna", f"Error: {str(e)}")
+        
+        # Run in thread
+        thread = threading.Thread(target=get_response, daemon=True)
+        thread.start()
+    
+    def append_training_log(self, message):
+        """Append message to training log"""
+        self.training_log.config(state='normal')
+        self.training_log.insert(tk.END, f"{message}\n")
+        self.training_log.see(tk.END)
+        self.training_log.config(state='disabled')
+    
+    def start_training(self):
+        """Start training Luna"""
+        if not self.loaded_datasets:
+            messagebox.showwarning("No Datasets", "Please load datasets first in the Dataset Explorer tab")
+            return
+        
+        def train_thread():
+            try:
+                self.train_button.config(state='disabled')
+                self.append_training_log("\n" + "="*60)
+                self.append_training_log("Starting Luna training...")
+                self.append_training_log("="*60)
+                
+                from luna_trainer import SimpleLunaTrainer
+                
+                samples = int(self.samples_var.get())
+                trainer = SimpleLunaTrainer(use_cache=True)
+                
+                self.append_training_log(f"Preparing {len(self.loaded_datasets)} datasets (max {samples} samples each)...")
+                trainer.prepare_datasets(self.loaded_datasets, max_samples_per_dataset=samples)
+                
+                self.append_training_log("Saving knowledge base...")
+                success = trainer.train()
+                
+                if success:
+                    self.append_training_log("\n✓ Training completed successfully!")
+                    self.append_training_log("Luna's knowledge base has been updated.")
+                else:
+                    self.append_training_log("\n✗ Training failed.")
+                
+            except Exception as e:
+                self.append_training_log(f"\n✗ Error: {str(e)}")
+                logger.error(f"Training error: {e}")
+            finally:
+                self.train_button.config(state='normal')
+        
+        # Run in thread
+        thread = threading.Thread(target=train_thread, daemon=True)
+        thread.start()
     
     def toggle_theme(self):
         """Toggle between light and dark themes"""
