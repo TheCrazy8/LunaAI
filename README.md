@@ -26,7 +26,21 @@ pip install -r requirements.txt
 
 ## Usage
 
-### Basic Usage
+### GUI Application
+
+LunaAI now includes a graphical user interface for easy interaction with datasets:
+
+```bash
+python luna_gui.py
+```
+
+The GUI provides:
+- **Dataset Selection**: Choose from all available HuggingFace datasets
+- **Load Datasets**: Load individual datasets or all at once
+- **Query Interface**: Search through loaded datasets
+- **Results Display**: View dataset contents and search results
+
+### Basic Usage (Programmatic)
 
 ```python
 from huggingface_datasets import HuggingFaceDatasetLoader
