@@ -6,8 +6,16 @@ import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox
 import threading
 import logging
-from huggingface_datasets import HuggingFaceDatasetLoader
-import sv_ttk
+
+try:
+    from huggingface_datasets import HuggingFaceDatasetLoader
+except ImportError as e:
+    raise ImportError("Failed to import huggingface_datasets. Ensure the module is in the same directory.") from e
+
+try:
+    import sv_ttk
+except ImportError as e:
+    raise ImportError("sv_ttk is required. Install it with: pip install sv-ttk") from e
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -17,13 +25,21 @@ logger = logging.getLogger(__name__)
 class LunaAIGUI:
     """Main GUI application for LunaAI"""
     
+    # Configuration constants
+    MAX_SEARCH_ITEMS = 1000  # Maximum items to search through
+    DEFAULT_RESULTS = 5  # Default number of results to show
+    
     def __init__(self, root):
         self.root = root
         self.root.title("LunaAI - HuggingFace Dataset Explorer")
         self.root.geometry("900x700")
         
-        # Apply sv_ttk theme
-        sv_ttk.set_theme("dark")
+        # Apply sv_ttk theme with error handling
+        try:
+            sv_ttk.set_theme("dark")
+        except Exception as e:
+            logger.warning(f"Failed to apply sv_ttk theme: {e}")
+            messagebox.showwarning("Theme Error", "Failed to apply theme. Using default.")
         
         # Initialize dataset loader
         self.loader = HuggingFaceDatasetLoader()
@@ -103,8 +119,7 @@ class LunaAIGUI:
         loaded_label = ttk.Label(dataset_frame, text="Loaded datasets:")
         loaded_label.grid(row=4, column=0, sticky=tk.W, pady=(10, 5))
         
-        self.loaded_text = tk.Text(dataset_frame, height=3, width=40, state='disabled',
-                                  background='#f0f0f0')
+        self.loaded_text = tk.Text(dataset_frame, height=3, width=40, state='disabled')
         self.loaded_text.grid(row=5, column=0, sticky=(tk.W, tk.E))
         
         # Query frame
@@ -135,7 +150,7 @@ class LunaAIGUI:
         results_label = ttk.Label(query_controls, text="Results to show:")
         results_label.grid(row=0, column=2, padx=(10, 5))
         
-        self.results_var = tk.StringVar(value="5")
+        self.results_var = tk.StringVar(value=str(self.DEFAULT_RESULTS))
         results_spinbox = ttk.Spinbox(query_controls, from_=1, to=50, width=5,
                                      textvariable=self.results_var)
         results_spinbox.grid(row=0, column=3)
@@ -220,11 +235,24 @@ class LunaAIGUI:
                 self.append_output(f"Loading dataset: {dataset_key}")
                 self.append_output(f"{'='*60}")
                 
-                # Load the dataset based on key
-                method_name = f"load_{dataset_key}"
-                if hasattr(self.loader, method_name):
-                    method = getattr(self.loader, method_name)
-                    dataset = method(streaming=True)
+                # Whitelist of allowed dataset loading methods
+                allowed_loaders = {
+                    'maptrace': self.loader.load_maptrace,
+                    'diffusiondb': self.loader.load_diffusiondb,
+                    'websight': self.loader.load_websight,
+                    'community_dataset': self.loader.load_community_dataset,
+                    'finevision': self.loader.load_finevision,
+                    'cads': self.loader.load_cads,
+                    'synth': self.loader.load_synth,
+                    'wikipedia': self.loader.load_wikipedia,
+                    'deepmath': self.loader.load_deepmath,
+                    'acemath': self.loader.load_acemath,
+                    'smoltalk': self.loader.load_smoltalk
+                }
+                
+                if dataset_key in allowed_loaders:
+                    loader_method = allowed_loaders[dataset_key]
+                    dataset = loader_method(streaming=True)
                     self.loaded_datasets[dataset_key] = dataset
                     self.current_dataset_key = dataset_key
                     
@@ -233,7 +261,7 @@ class LunaAIGUI:
                     self.update_loaded_datasets_display()
                     self.set_status(f"Ready - {dataset_key} loaded")
                 else:
-                    self.append_output(f"✗ Error: No loader method found for {dataset_key}")
+                    self.append_output(f"✗ Error: Unknown dataset key {dataset_key}")
                     self.set_status("Error loading dataset")
                     
             except Exception as e:
@@ -340,12 +368,11 @@ class LunaAIGUI:
             query_lower = query.lower()
             results_found = 0
             items_checked = 0
-            max_items_to_check = 1000  # Limit search to first 1000 items
             
             for item in dataset:
                 items_checked += 1
-                if items_checked > max_items_to_check:
-                    self.append_output(f"\n(Searched {max_items_to_check} items, stopping search)")
+                if items_checked > self.MAX_SEARCH_ITEMS:
+                    self.append_output(f"\n(Searched {self.MAX_SEARCH_ITEMS} items, stopping search)")
                     break
                 
                 # Convert item to string and search
@@ -384,12 +411,16 @@ class LunaAIGUI:
     
     def toggle_theme(self):
         """Toggle between light and dark themes"""
-        if self.current_theme == "dark":
-            sv_ttk.set_theme("light")
-            self.current_theme = "light"
-        else:
-            sv_ttk.set_theme("dark")
-            self.current_theme = "dark"
+        try:
+            if self.current_theme == "dark":
+                sv_ttk.set_theme("light")
+                self.current_theme = "light"
+            else:
+                sv_ttk.set_theme("dark")
+                self.current_theme = "dark"
+        except Exception as e:
+            logger.error(f"Failed to toggle theme: {e}")
+            messagebox.showerror("Theme Error", f"Failed to toggle theme: {str(e)}")
 
 
 def main():
