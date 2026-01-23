@@ -59,6 +59,16 @@ print(f"Loaded {len(datasets)} datasets")
 python huggingface_datasets.py
 ```
 
+### Running Examples
+
+```bash
+# Run all examples
+python examples.py
+
+# Or use individual examples in your code
+from examples import example_load_single_dataset, example_load_multiple_datasets
+```
+
 ## Dataset Details
 
 ### Vision & Image Datasets
