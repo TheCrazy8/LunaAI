@@ -7,6 +7,7 @@ import logging
 import os
 from typing import List, Dict, Any, Optional
 import json
+import time
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -34,6 +35,12 @@ except ImportError:
     concatenate_datasets = None
     torch = None
 
+try:
+    from luna_cache import LunaCacheManager
+except ImportError:
+    logger.warning("Luna cache manager not available")
+    LunaCacheManager = None
+
 
 class LunaTrainer:
     """
@@ -41,13 +48,15 @@ class LunaTrainer:
     """
     
     def __init__(self, model_name: str = "microsoft/Phi-3.5-mini-instruct",
-                 output_dir: str = "./luna_trained"):
+                 output_dir: str = "./luna_trained",
+                 use_cache: bool = True):
         """
         Initialize Luna trainer.
         
         Args:
             model_name (str): Base model to fine-tune
             output_dir (str): Directory to save trained model
+            use_cache (bool): Whether to use caching
         """
         self.model_name = model_name
         self.output_dir = output_dir
@@ -55,23 +64,43 @@ class LunaTrainer:
         self.tokenizer = None
         self.trainer = None
         self.training_data = None
+        self.use_cache = use_cache
+        
+        # Initialize cache manager
+        if use_cache and LunaCacheManager:
+            self.cache_manager = LunaCacheManager()
+            logger.info("Cache manager enabled")
+        else:
+            self.cache_manager = None
+            logger.info("Cache manager disabled")
         
         logger.info(f"Luna Trainer initialized with base model: {model_name}")
     
     def prepare_datasets(self, datasets_dict: Dict[str, Any], 
-                        max_samples_per_dataset: int = 1000) -> Dataset:
+                        max_samples_per_dataset: int = 1000,
+                        force_refresh: bool = False) -> Dataset:
         """
         Prepare and combine datasets for training.
         
         Args:
             datasets_dict (dict): Dictionary of loaded datasets
             max_samples_per_dataset (int): Maximum samples to use from each dataset
+            force_refresh (bool): Force refresh cache
             
         Returns:
             Dataset: Combined training dataset
         """
         if not TRAINING_AVAILABLE:
             raise ImportError("Training dependencies not available")
+        
+        # Check cache first
+        cache_key = f"training_data_{len(datasets_dict)}_{max_samples_per_dataset}"
+        if self.cache_manager and not force_refresh:
+            cached_data = self.cache_manager.get_cached_training_data(cache_key)
+            if cached_data is not None:
+                logger.info("Using cached training data")
+                self.training_data = cached_data
+                return cached_data
         
         logger.info(f"Preparing {len(datasets_dict)} datasets for training...")
         
@@ -80,7 +109,20 @@ class LunaTrainer:
         for dataset_name, dataset in datasets_dict.items():
             logger.info(f"Processing {dataset_name}...")
             
+            # Check if we have cached samples for this dataset
+            if self.cache_manager:
+                cached_samples = self.cache_manager.get_cached_dataset_samples(dataset_name)
+                if cached_samples:
+                    logger.info(f"Using {len(cached_samples)} cached samples from {dataset_name}")
+                    for item in cached_samples[:max_samples_per_dataset]:
+                        text = self._item_to_text(item, dataset_name)
+                        if text:
+                            all_texts.append({"text": text, "dataset": dataset_name})
+                    continue
+            
+            # Process fresh data
             sample_count = 0
+            samples_to_cache = []
             for item in dataset:
                 if sample_count >= max_samples_per_dataset:
                     break
@@ -89,7 +131,16 @@ class LunaTrainer:
                 text = self._item_to_text(item, dataset_name)
                 if text:
                     all_texts.append({"text": text, "dataset": dataset_name})
+                    samples_to_cache.append(item)
                     sample_count += 1
+            
+            # Cache the samples for future use
+            if self.cache_manager and samples_to_cache:
+                self.cache_manager.cache_dataset_samples(
+                    dataset_name,
+                    samples_to_cache,
+                    {'max_samples': max_samples_per_dataset}
+                )
             
             logger.info(f"Collected {sample_count} samples from {dataset_name}")
         
@@ -98,6 +149,16 @@ class LunaTrainer:
         # Create dataset
         training_dataset = Dataset.from_list(all_texts)
         self.training_data = training_dataset
+        
+        # Cache the training data
+        if self.cache_manager:
+            metadata = {
+                'num_datasets': len(datasets_dict),
+                'max_samples_per_dataset': max_samples_per_dataset,
+                'total_samples': len(all_texts),
+                'datasets': list(datasets_dict.keys())
+            }
+            self.cache_manager.cache_training_data(cache_key, training_dataset, metadata)
         
         return training_dataset
     
@@ -245,6 +306,12 @@ class LunaTrainer:
             with open(os.path.join(self.output_dir, "training_info.json"), "w") as f:
                 json.dump(info, f, indent=2)
             
+            # Cache the trained model
+            if self.cache_manager:
+                model_name = f"luna_trained_{int(time.time())}"
+                self.cache_manager.cache_trained_model(model_name, self.output_dir, info)
+                logger.info(f"Trained model cached as: {model_name}")
+            
             logger.info("Training completed successfully!")
             return True
             
@@ -290,19 +357,52 @@ class SimpleLunaTrainer:
     Simple fallback trainer that creates a knowledge base instead of training
     """
     
-    def __init__(self, output_dir: str = "./luna_knowledge"):
+    def __init__(self, output_dir: str = "./luna_knowledge", use_cache: bool = True):
         self.output_dir = output_dir
         self.knowledge_base = {}
+        self.use_cache = use_cache
+        
+        # Initialize cache manager
+        if use_cache and LunaCacheManager:
+            self.cache_manager = LunaCacheManager()
+            logger.info("Cache manager enabled (simple mode)")
+        else:
+            self.cache_manager = None
+            logger.info("Cache manager disabled (simple mode)")
+        
         logger.info("Simple Luna Trainer initialized (knowledge base mode)")
     
     def prepare_datasets(self, datasets_dict: Dict[str, Any],
-                        max_samples_per_dataset: int = 1000):
+                        max_samples_per_dataset: int = 1000,
+                        force_refresh: bool = False):
         """Prepare knowledge base from datasets"""
+        
+        # Check cache first
+        cache_key = f"simple_kb_{len(datasets_dict)}_{max_samples_per_dataset}"
+        if self.cache_manager and not force_refresh:
+            cached_kb = self.cache_manager.get_cached_training_data(cache_key)
+            if cached_kb is not None:
+                logger.info("Using cached knowledge base")
+                self.knowledge_base = cached_kb
+                return cached_kb
+        
         logger.info(f"Building knowledge base from {len(datasets_dict)} datasets...")
         
         for dataset_name, dataset in datasets_dict.items():
             logger.info(f"Processing {dataset_name}...")
             
+            # Check for cached samples
+            if self.cache_manager:
+                cached_samples = self.cache_manager.get_cached_dataset_samples(dataset_name)
+                if cached_samples:
+                    self.knowledge_base[dataset_name] = {
+                        'samples': cached_samples[:max_samples_per_dataset],
+                        'count': len(cached_samples[:max_samples_per_dataset])
+                    }
+                    logger.info(f"Used {len(cached_samples[:max_samples_per_dataset])} cached samples")
+                    continue
+            
+            # Process fresh samples
             samples = []
             for i, item in enumerate(dataset):
                 if i >= max_samples_per_dataset:
@@ -314,7 +414,24 @@ class SimpleLunaTrainer:
                 'count': len(samples)
             }
             
+            # Cache the samples
+            if self.cache_manager and samples:
+                self.cache_manager.cache_dataset_samples(
+                    dataset_name,
+                    samples,
+                    {'max_samples': max_samples_per_dataset}
+                )
+            
             logger.info(f"Added {len(samples)} samples from {dataset_name}")
+        
+        # Cache the knowledge base
+        if self.cache_manager:
+            metadata = {
+                'num_datasets': len(datasets_dict),
+                'max_samples_per_dataset': max_samples_per_dataset,
+                'datasets': list(datasets_dict.keys())
+            }
+            self.cache_manager.cache_training_data(cache_key, self.knowledge_base, metadata)
         
         return self.knowledge_base
     

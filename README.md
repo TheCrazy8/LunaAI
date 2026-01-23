@@ -10,6 +10,15 @@ Luna is an intelligent AI model that uses the datasets to provide contextual ans
 - **Context-Aware Responses**: Understands the structure and content of datasets
 - **Lightweight Mode**: Works without heavy ML models for quick responses
 - **Full AI Mode**: Optional integration with transformer models for advanced analysis
+- **Persistent Cache**: Training data and models cached across instances in `~/.luna_cache`
+
+### Training & Caching
+Luna can be trained on all datasets with intelligent caching:
+- **Cross-Instance Cache**: Training data persists across application restarts
+- **Smart Caching**: Automatically caches dataset samples, training data, and models
+- **Cache Management**: View cache stats and clear cache when needed
+- **Fast Reloading**: Instantly load previously processed datasets
+- **Storage Efficient**: Organized cache structure in user's home directory
 
 ### MCP Server Support
 Luna can connect to Model Context Protocol (MCP) servers for extended capabilities:
