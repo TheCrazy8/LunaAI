@@ -1,10 +1,24 @@
 # LunaAI
 
-LunaAI is a HuggingFace datasets integration tool that provides easy access to multiple AI/ML datasets.
+LunaAI is an intelligent AI assistant powered by HuggingFace datasets with advanced features including MCP server support, HuggingFace authentication, and a modern GUI.
 
 ## Features
 
-This project integrates the following HuggingFace datasets:
+### Luna AI Model
+Luna is an intelligent AI model that uses the datasets to provide contextual answers and insights:
+- **Smart Query System**: Luna intelligently analyzes dataset content
+- **Context-Aware Responses**: Understands the structure and content of datasets
+- **Lightweight Mode**: Works without heavy ML models for quick responses
+- **Full AI Mode**: Optional integration with transformer models for advanced analysis
+
+### MCP Server Support
+Luna can connect to Model Context Protocol (MCP) servers for extended capabilities:
+- Connect to external tools and services
+- Access additional data sources
+- Integrate with development workflows
+
+### Dataset Integration
+This project integrates 14 HuggingFace datasets:
 
 1. **google/MapTrace** - Maps and traces dataset
 2. **poloclub/diffusiondb** - Large-scale text-to-image prompts and images
@@ -17,6 +31,9 @@ This project integrates the following HuggingFace datasets:
 9. **zwhe99/DeepMath-103K** - Mathematics problems dataset
 10. **nvidia/AceMath-RM-Training-Data** - NVIDIA AceMath reward model training data
 11. **HuggingFaceTB/smoltalk2** - Conversational dataset
+12. **Alibaba-Apsara/Superior-Reasoning-SFT-gpt-oss-120b** - Superior reasoning dataset
+13. **nvidia/AudioSkills** - Audio skills dataset
+14. **google/mobile-actions** - Mobile actions dataset
 
 ## Installation
 

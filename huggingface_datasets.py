@@ -27,6 +27,9 @@ class HuggingFaceDatasetLoader:
     - zwhe99/DeepMath-103K: Mathematics problems dataset
     - nvidia/AceMath-RM-Training-Data: NVIDIA AceMath reward model training data
     - HuggingFaceTB/smoltalk2: Conversational dataset
+    - Alibaba-Apsara/Superior-Reasoning-SFT-gpt-oss-120b: Superior reasoning dataset
+    - nvidia/AudioSkills: Audio skills dataset
+    - google/mobile-actions: Mobile actions dataset
     """
     
     def __init__(self):
@@ -75,6 +78,18 @@ class HuggingFaceDatasetLoader:
             'smoltalk': {
                 'name': 'HuggingFaceTB/smoltalk2',
                 'description': 'SmolTalk2 - Conversational dataset'
+            },
+            'superior_reasoning': {
+                'name': 'Alibaba-Apsara/Superior-Reasoning-SFT-gpt-oss-120b',
+                'description': 'Superior Reasoning SFT - Advanced reasoning dataset by Alibaba'
+            },
+            'audioskills': {
+                'name': 'nvidia/AudioSkills',
+                'description': 'AudioSkills - Audio processing dataset by NVIDIA'
+            },
+            'mobile_actions': {
+                'name': 'google/mobile-actions',
+                'description': 'Mobile Actions - Mobile interaction dataset by Google'
             }
         }
     
@@ -312,6 +327,69 @@ class HuggingFaceDatasetLoader:
             logger.error(f"Error loading SmolTalk2 dataset: {e}")
             raise
     
+    def load_superior_reasoning(self, split='train', streaming=False):
+        """
+        Load the Alibaba-Apsara Superior-Reasoning-SFT dataset.
+        
+        Args:
+            split (str): Dataset split to load
+            streaming (bool): Whether to stream the dataset
+            
+        Returns:
+            Dataset: The loaded Superior Reasoning dataset
+        """
+        try:
+            logger.info(f"Loading Superior Reasoning dataset (split: {split}, streaming: {streaming})")
+            dataset = load_dataset('Alibaba-Apsara/Superior-Reasoning-SFT-gpt-oss-120b', split=split, streaming=streaming)
+            self.datasets['superior_reasoning'] = dataset
+            logger.info("Superior Reasoning dataset loaded successfully")
+            return dataset
+        except Exception as e:
+            logger.error(f"Error loading Superior Reasoning dataset: {e}")
+            raise
+    
+    def load_audioskills(self, split='train', streaming=False):
+        """
+        Load the NVIDIA AudioSkills dataset.
+        
+        Args:
+            split (str): Dataset split to load
+            streaming (bool): Whether to stream the dataset
+            
+        Returns:
+            Dataset: The loaded AudioSkills dataset
+        """
+        try:
+            logger.info(f"Loading AudioSkills dataset (split: {split}, streaming: {streaming})")
+            dataset = load_dataset('nvidia/AudioSkills', split=split, streaming=streaming)
+            self.datasets['audioskills'] = dataset
+            logger.info("AudioSkills dataset loaded successfully")
+            return dataset
+        except Exception as e:
+            logger.error(f"Error loading AudioSkills dataset: {e}")
+            raise
+    
+    def load_mobile_actions(self, split='train', streaming=False):
+        """
+        Load the Google mobile-actions dataset.
+        
+        Args:
+            split (str): Dataset split to load
+            streaming (bool): Whether to stream the dataset
+            
+        Returns:
+            Dataset: The loaded Mobile Actions dataset
+        """
+        try:
+            logger.info(f"Loading Mobile Actions dataset (split: {split}, streaming: {streaming})")
+            dataset = load_dataset('google/mobile-actions', split=split, streaming=streaming)
+            self.datasets['mobile_actions'] = dataset
+            logger.info("Mobile Actions dataset loaded successfully")
+            return dataset
+        except Exception as e:
+            logger.error(f"Error loading Mobile Actions dataset: {e}")
+            raise
+    
     def load_all_datasets(self, streaming=True):
         """
         Load all supported datasets.
@@ -379,6 +457,21 @@ class HuggingFaceDatasetLoader:
         except Exception as e:
             logger.warning(f"Could not load SmolTalk2: {e}")
         
+        try:
+            self.load_superior_reasoning(streaming=streaming)
+        except Exception as e:
+            logger.warning(f"Could not load Superior Reasoning: {e}")
+        
+        try:
+            self.load_audioskills(streaming=streaming)
+        except Exception as e:
+            logger.warning(f"Could not load AudioSkills: {e}")
+        
+        try:
+            self.load_mobile_actions(streaming=streaming)
+        except Exception as e:
+            logger.warning(f"Could not load Mobile Actions: {e}")
+        
         logger.info(f"Loaded {len(self.datasets)} datasets successfully")
         return self.datasets
     
@@ -389,7 +482,8 @@ class HuggingFaceDatasetLoader:
         Args:
             dataset_key (str): Key of the dataset (e.g., 'maptrace', 'diffusiondb', 'websight', 
                               'community_dataset', 'finevision', 'cads', 'synth', 'wikipedia', 
-                              'deepmath', 'acemath', 'smoltalk')
+                              'deepmath', 'acemath', 'smoltalk', 'superior_reasoning', 
+                              'audioskills', 'mobile_actions')
             
         Returns:
             dict: Dataset information

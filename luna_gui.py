@@ -13,9 +13,27 @@ except ImportError as e:
     raise ImportError("Failed to import huggingface_datasets. Ensure the module is in the same directory.") from e
 
 try:
+    from luna_model import SimpleLunaAI, LunaAI
+except ImportError as e:
+    logger.warning("Failed to import luna_model. Using basic search only.")
+    SimpleLunaAI = None
+    LunaAI = None
+
+try:
     import sv_ttk
 except ImportError as e:
     raise ImportError("sv_ttk is required. Install it with: pip install sv-ttk") from e
+
+try:
+    from huggingface_hub import login, whoami
+    from huggingface_hub import get_token
+    HF_HUB_AVAILABLE = True
+except ImportError as e:
+    logger.warning("huggingface_hub functions not fully available")
+    HF_HUB_AVAILABLE = False
+    login = None
+    whoami = None
+    get_token = None
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -45,6 +63,18 @@ class LunaAIGUI:
         self.loader = HuggingFaceDatasetLoader()
         self.loaded_datasets = {}
         self.current_dataset_key = None
+        self.is_logged_in = False
+        
+        # Initialize Luna AI model
+        if SimpleLunaAI:
+            self.luna = SimpleLunaAI()
+            logger.info("Luna AI initialized in simple mode")
+        else:
+            self.luna = None
+            logger.warning("Luna AI not available")
+        
+        # Check initial login status
+        self.check_login_status()
         
         # Setup GUI
         self.setup_ui()
@@ -60,10 +90,42 @@ class LunaAIGUI:
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
         main_frame.columnconfigure(0, weight=1)
-        main_frame.rowconfigure(3, weight=1)
+        main_frame.rowconfigure(1, weight=1)
+        
+        # Title frame
+        self.setup_title_frame(main_frame)
+        
+        # Create notebook (tabbed interface)
+        self.notebook = ttk.Notebook(main_frame)
+        self.notebook.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        
+        # Tab 1: Dataset Explorer
+        dataset_tab = ttk.Frame(self.notebook, padding="10")
+        self.notebook.add(dataset_tab, text="Dataset Explorer")
+        self.setup_dataset_tab(dataset_tab)
+        
+        # Tab 2: Chat with Luna
+        chat_tab = ttk.Frame(self.notebook, padding="10")
+        self.notebook.add(chat_tab, text="Chat with Luna")
+        self.setup_chat_tab(chat_tab)
+        
+        # Tab 3: Train Luna
+        train_tab = ttk.Frame(self.notebook, padding="10")
+        self.notebook.add(train_tab, text="Train Luna")
+        self.setup_train_tab(train_tab)
+        
+        # Status bar (bottom of main frame)
+        self.status_bar = ttk.Label(main_frame, text="Ready", relief=tk.SUNKEN,
+                                   anchor=tk.W)
+        self.status_bar.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
+    
+    def setup_dataset_tab(self, parent):
+        """Setup the dataset explorer tab"""
+        parent.columnconfigure(0, weight=1)
+        parent.rowconfigure(3, weight=1)
         
         # Title and theme toggle
-        title_frame = ttk.Frame(main_frame)
+        title_frame = ttk.Frame(parent)
         title_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
         title_frame.columnconfigure(0, weight=1)
         
@@ -71,10 +133,20 @@ class LunaAIGUI:
                                font=('Arial', 16, 'bold'))
         title_label.grid(row=0, column=0, sticky=tk.W)
         
+        # HuggingFace login status
+        self.login_status_label = ttk.Label(title_frame, text="HF: Not logged in", 
+                                           foreground='orange')
+        self.login_status_label.grid(row=0, column=1, padx=(10, 5))
+        
+        # Login button
+        self.login_button = ttk.Button(title_frame, text="Login to HuggingFace",
+                                      command=self.show_login_dialog)
+        self.login_button.grid(row=0, column=2, padx=(0, 5))
+        
         # Theme toggle button
         self.theme_button = ttk.Button(title_frame, text="Toggle Theme",
                                       command=self.toggle_theme)
-        self.theme_button.grid(row=0, column=1, sticky=tk.E)
+        self.theme_button.grid(row=0, column=3, sticky=tk.E)
         self.current_theme = "dark"
         
         # Dataset selection frame
@@ -247,7 +319,10 @@ class LunaAIGUI:
                     'wikipedia': self.loader.load_wikipedia,
                     'deepmath': self.loader.load_deepmath,
                     'acemath': self.loader.load_acemath,
-                    'smoltalk': self.loader.load_smoltalk
+                    'smoltalk': self.loader.load_smoltalk,
+                    'superior_reasoning': self.loader.load_superior_reasoning,
+                    'audioskills': self.loader.load_audioskills,
+                    'mobile_actions': self.loader.load_mobile_actions
                 }
                 
                 if dataset_key in allowed_loaders:
@@ -315,7 +390,7 @@ class LunaAIGUI:
         thread.start()
     
     def query_dataset(self):
-        """Query the loaded dataset"""
+        """Query the loaded dataset using Luna AI"""
         if not self.loaded_datasets:
             messagebox.showwarning("No Dataset", "Please load a dataset first")
             return
@@ -328,25 +403,25 @@ class LunaAIGUI:
         def query_thread():
             try:
                 self.disable_buttons()
-                self.set_status("Querying dataset...")
+                self.set_status("Luna is processing your query...")
                 
                 num_results = int(self.results_var.get())
                 
                 self.append_output(f"\n{'='*60}")
                 self.append_output(f"Query: {query}")
-                self.append_output(f"Searching in: {self.current_dataset_key or 'all loaded datasets'}")
+                self.append_output(f"Using Luna AI to analyze: {self.current_dataset_key or 'all loaded datasets'}")
                 self.append_output(f"{'='*60}\n")
                 
                 # Get the current dataset to query
                 if self.current_dataset_key and self.current_dataset_key in self.loaded_datasets:
                     dataset = self.loaded_datasets[self.current_dataset_key]
-                    self.search_dataset(dataset, query, num_results, self.current_dataset_key)
+                    self.query_with_luna(dataset, query, num_results, self.current_dataset_key)
                 else:
                     # Query all datasets
                     for key, dataset in self.loaded_datasets.items():
-                        self.append_output(f"\nSearching in {key}:")
+                        self.append_output(f"\n Luna analyzing {key}:")
                         self.append_output("-" * 40)
-                        self.search_dataset(dataset, query, num_results, key)
+                        self.query_with_luna(dataset, query, num_results, key)
                 
                 self.set_status("Query complete")
                 
@@ -361,6 +436,36 @@ class LunaAIGUI:
         # Run in background thread
         thread = threading.Thread(target=query_thread, daemon=True)
         thread.start()
+    
+    def query_with_luna(self, dataset, query, num_results, dataset_name):
+        """Use Luna AI to intelligently query the dataset"""
+        try:
+            # Collect samples from the dataset
+            dataset_samples = []
+            max_samples = min(num_results * 2, 20)  # Get more samples for context
+            
+            for i, item in enumerate(dataset):
+                if i >= max_samples:
+                    break
+                dataset_samples.append(item)
+            
+            if not dataset_samples:
+                self.append_output(f"No samples available from {dataset_name}")
+                return
+            
+            # Use Luna AI if available
+            if self.luna and self.luna.is_loaded:
+                self.append_output("\nLuna AI is analyzing the dataset...")
+                response = self.luna.query_dataset(query, dataset_samples, dataset_name, max_samples)
+                self.append_output(response)
+            else:
+                # Fallback to basic search
+                self.search_dataset(dataset, query, num_results, dataset_name)
+                
+        except Exception as e:
+            error_msg = f"Error with Luna: {str(e)}"
+            self.append_output(error_msg)
+            logger.error(error_msg)
     
     def search_dataset(self, dataset, query, num_results, dataset_name):
         """Search through dataset and display results"""
@@ -408,6 +513,121 @@ class LunaAIGUI:
             error_msg = f"Error searching {dataset_name}: {str(e)}"
             self.append_output(error_msg)
             logger.error(error_msg)
+    
+    def check_login_status(self):
+        """Check if user is logged into HuggingFace"""
+        if not HF_HUB_AVAILABLE:
+            self.is_logged_in = False
+            return
+        
+        try:
+            # Try to get the token
+            token = get_token()
+            if token:
+                # Try to verify with whoami
+                try:
+                    user_info = whoami(token)
+                    username = user_info.get('name', 'Unknown')
+                    self.is_logged_in = True
+                    logger.info(f"Logged in to HuggingFace as: {username}")
+                    if hasattr(self, 'login_status_label'):
+                        self.login_status_label.config(text=f"HF: {username}", foreground='green')
+                        self.login_button.config(text="Logout")
+                except Exception as e:
+                    self.is_logged_in = False
+                    logger.warning(f"Token exists but verification failed: {e}")
+            else:
+                self.is_logged_in = False
+                if hasattr(self, 'login_status_label'):
+                    self.login_status_label.config(text="HF: Not logged in", foreground='orange')
+        except Exception as e:
+            self.is_logged_in = False
+            logger.error(f"Error checking login status: {e}")
+    
+    def show_login_dialog(self):
+        """Show login dialog or logout"""
+        if not HF_HUB_AVAILABLE:
+            messagebox.showerror("Error", "HuggingFace Hub not available. Install with: pip install huggingface_hub")
+            return
+        
+        if self.is_logged_in:
+            # Logout
+            response = messagebox.askyesno("Logout", "Do you want to logout from HuggingFace?")
+            if response:
+                try:
+                    # Logout by passing token=False
+                    from huggingface_hub import logout
+                    logout()
+                    self.is_logged_in = False
+                    self.login_status_label.config(text="HF: Not logged in", foreground='orange')
+                    self.login_button.config(text="Login to HuggingFace")
+                    messagebox.showinfo("Success", "Logged out successfully")
+                except Exception as e:
+                    messagebox.showerror("Error", f"Failed to logout: {e}")
+        else:
+            # Show login dialog
+            dialog = tk.Toplevel(self.root)
+            dialog.title("Login to HuggingFace")
+            dialog.geometry("400x200")
+            dialog.transient(self.root)
+            dialog.grab_set()
+            
+            # Center the dialog
+            dialog.update_idletasks()
+            x = (dialog.winfo_screenwidth() // 2) - (dialog.winfo_width() // 2)
+            y = (dialog.winfo_screenheight() // 2) - (dialog.winfo_height() // 2)
+            dialog.geometry(f"+{x}+{y}")
+            
+            frame = ttk.Frame(dialog, padding="20")
+            frame.pack(fill=tk.BOTH, expand=True)
+            
+            ttk.Label(frame, text="Enter your HuggingFace access token:",
+                     font=('Arial', 10)).pack(pady=(0, 10))
+            
+            token_entry = ttk.Entry(frame, width=50, show="*")
+            token_entry.pack(pady=(0, 10))
+            token_entry.focus()
+            
+            ttk.Label(frame, text="Get your token from: https://huggingface.co/settings/tokens",
+                     foreground='blue', font=('Arial', 8)).pack(pady=(0, 10))
+            
+            result = {'success': False}
+            
+            def do_login():
+                token = token_entry.get().strip()
+                if not token:
+                    messagebox.showwarning("Empty Token", "Please enter a token")
+                    return
+                
+                try:
+                    # Try to login
+                    login(token=token)
+                    
+                    # Verify login
+                    user_info = whoami(token)
+                    username = user_info.get('name', 'Unknown')
+                    
+                    self.is_logged_in = True
+                    self.login_status_label.config(text=f"HF: {username}", foreground='green')
+                    self.login_button.config(text="Logout")
+                    
+                    result['success'] = True
+                    messagebox.showinfo("Success", f"Logged in as: {username}")
+                    dialog.destroy()
+                    
+                except Exception as e:
+                    messagebox.showerror("Login Failed", f"Failed to login: {str(e)}")
+            
+            button_frame = ttk.Frame(frame)
+            button_frame.pack(pady=(10, 0))
+            
+            ttk.Button(button_frame, text="Login", command=do_login).pack(side=tk.LEFT, padx=5)
+            ttk.Button(button_frame, text="Cancel", command=dialog.destroy).pack(side=tk.LEFT, padx=5)
+            
+            # Bind Enter key to login
+            token_entry.bind('<Return>', lambda e: do_login())
+            
+            dialog.wait_window()
     
     def toggle_theme(self):
         """Toggle between light and dark themes"""
