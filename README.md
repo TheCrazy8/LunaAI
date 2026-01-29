@@ -1,9 +1,28 @@
 # LunaAI
 
-LunaAI is a HuggingFace datasets integration tool that provides easy access to multiple AI/ML datasets.
+LunaAI is an AI-powered chat application with HuggingFace datasets integration, model training capabilities, and MCP server support.
 
 ## Features
 
+### 🤖 AI Model Training
+- Train custom conversational AI models on HuggingFace datasets
+- Fine-tune DialoGPT models for chat applications
+- Support for multiple training datasets
+
+### 💬 Chat GUI
+- Modern Tkinter TTK interface with sv_ttk theme
+- Dark/Light theme toggle
+- Real-time conversation with trained AI model
+- Export chat history
+- Clean and intuitive user experience
+
+### 🔌 MCP Server Support
+- Model Context Protocol server integration
+- RESTful API for external integrations
+- Session management with conversation context
+- Multiple endpoint support (generate, chat, model info)
+
+### 📊 Dataset Integration
 This project integrates the following HuggingFace datasets:
 
 1. **google/MapTrace** - Maps and traces dataset
@@ -24,7 +43,117 @@ This project integrates the following HuggingFace datasets:
 pip install -r requirements.txt
 ```
 
-## Usage
+## Quick Start
+
+### 1. Train the Model
+
+Train a conversational AI model using the integrated datasets:
+
+```bash
+python luna_ai.py train --num-samples 5000 --epochs 2
+```
+
+Options:
+- `--base-model`: Base model to fine-tune (default: microsoft/DialoGPT-small)
+- `--output-dir`: Output directory (default: ./luna_model)
+- `--num-samples`: Number of training samples (default: 5000)
+- `--epochs`: Number of epochs (default: 2)
+- `--batch-size`: Batch size (default: 4)
+
+### 2. Launch Chat GUI
+
+Start the interactive chat interface:
+
+```bash
+python luna_ai.py chat
+```
+
+Features:
+- Real-time AI conversation
+- Dark/Light theme switching
+- Export chat history
+- Clear conversation
+
+### 3. Start MCP Server
+
+Run the MCP server for external integrations:
+
+```bash
+python luna_ai.py mcp --port 8765
+```
+
+Options:
+- `--model-path`: Path to trained model
+- `--host`: Server host (default: 127.0.0.1)
+- `--port`: Server port (default: 8765)
+
+## Usage Examples
+
+### Training with Custom Parameters
+
+```bash
+# Train with more samples and epochs
+python luna_ai.py train --num-samples 10000 --epochs 3 --batch-size 8
+
+# Use a different base model
+python luna_ai.py train --base-model microsoft/DialoGPT-medium
+```
+
+### Using the Chat GUI
+
+1. Launch the chat application
+2. Wait for the model to load
+3. Type your message and press Enter or click Send
+4. Toggle theme with the "Toggle Theme" button
+5. Export your conversation with "Export Chat"
+
+### MCP Server API
+
+The MCP server supports the following methods:
+
+#### Generate Text
+```json
+{
+  "method": "generate",
+  "params": {
+    "prompt": "Hello, how are you?",
+    "max_length": 100,
+    "temperature": 0.7
+  }
+}
+```
+
+#### Chat with Context
+```json
+{
+  "method": "chat",
+  "params": {
+    "message": "What's the weather like?",
+    "session_id": "user123",
+    "max_length": 100
+  }
+}
+```
+
+#### Get Model Info
+```json
+{
+  "method": "get_model_info",
+  "params": {}
+}
+```
+
+#### Clear Context
+```json
+{
+  "method": "clear_context",
+  "params": {
+    "session_id": "user123"
+  }
+}
+```
+
+## Dataset Usage
 
 ### Basic Usage
 
