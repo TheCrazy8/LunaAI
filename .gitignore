@@ -35,3 +35,12 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+
+# Model files and cache
+luna_model/
+*.pth
+*.pt
+*.bin
+.cache/
+models/
+checkpoints/

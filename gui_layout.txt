@@ -1,0 +1,112 @@
+================================================================================
+LunaAI Chat GUI - Interface Design (sv_ttk themed)
+================================================================================
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 🌙 LunaAI Chat                                        Model ready ✓         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  [SYSTEM] Model loaded successfully! You can start chatting.               │
+│                                                                             │
+│  You: Hello! How are you today?                                            │
+│                                                                             │
+│  LunaAI: Hello! I'm doing well, thank you for asking. I'm here to         │
+│  help you with any questions or conversations you'd like to have.          │
+│  How can I assist you today?                                               │
+│                                                                             │
+│  You: Can you help me with a coding problem?                               │
+│                                                                             │
+│  LunaAI: Of course! I'd be happy to help you with your coding problem.     │
+│  Please describe the issue you're facing, and I'll do my best to           │
+│  provide assistance.                                                        │
+│                                                                             │
+│  [Chat display area with scrollbar]                                        │
+│                                                                             │
+│                                                                             │
+│                                                                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ [Type your message here...                                    ] [ Send ]   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│            [ Clear Chat ]  [ Toggle Theme ]  [ Export Chat ]               │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+GUI Features
+================================================================================
+
+  • Title Bar            : Shows 'LunaAI Chat' and model status indicator
+  • Status Label         : Displays current status (Loading/Ready/Generating)
+  • Chat Display         : Scrollable text area with color-coded messages:
+  •   - User messages    : Green (#4CAF50)
+  •   - Assistant messages : Blue (#2196F3)
+  •   - System messages  : Orange (#FFA500), italic
+  • Input Field          : Text entry for user messages (Enter to send)
+  • Send Button          : Sends the message (disabled during generation)
+  • Clear Chat           : Clears conversation history with confirmation
+  • Toggle Theme         : Switches between dark and light sv_ttk themes
+  • Export Chat          : Saves conversation history to text file
+
+================================================================================
+Theme Support (sv_ttk)
+================================================================================
+
+Dark Theme (Default):
+  - Background: #1e1e1e
+  - Foreground: #ffffff
+  - Modern, eye-friendly appearance
+
+Light Theme:
+  - Background: #ffffff
+  - Foreground: #000000
+  - Clean, professional appearance
+
+Toggle between themes with 'Toggle Theme' button
+Theme applies to entire window and chat display
+
+================================================================================
+User Interaction Flow
+================================================================================
+
+1. Application Launch
+   → Window opens with 'Loading model...' message
+   → Model loads asynchronously in background thread
+
+2. Model Loading Complete
+   → Status changes to 'Model ready ✓'
+   → Send button becomes enabled
+   → Input field becomes active and focused
+
+3. User Input
+   → Type message in input field
+   → Press Enter or click Send button
+   → Message appears in chat display (green)
+
+4. AI Response Generation
+   → Status changes to 'Generating response...'
+   → Input and Send button disabled temporarily
+   → Model generates response in background thread
+
+5. Response Display
+   → AI response appears in chat display (blue)
+   → Status returns to 'Model ready ✓'
+   → Input and Send button re-enabled
+   → Ready for next message
+
+6. Additional Actions
+   → Clear Chat: Clears all messages with confirmation
+   → Toggle Theme: Switches UI appearance
+   → Export Chat: Saves conversation to text file
+
+================================================================================
+Technical Implementation
+================================================================================
+
+Framework: Tkinter with TTK widgets
+Theme: sv_ttk (Sun Valley theme)
+Threading: Async model loading and response generation
+Font: Helvetica (11pt for messages, 18pt bold for title)
+Layout: Grid-based responsive design
+
+================================================================================
